@@ -1,0 +1,53 @@
+-- Category catalog. businesslist_slug and finelib_slug values were confirmed
+-- directly against the live sites (fetched and inspected, not guessed) —
+-- see the scraping engine's source modules for the verified URL patterns.
+-- A category with no slug for a given source simply yields 0 rows from that
+-- source for that category (existing graceful-empty-result behaviour) —
+-- it does not need to be removed to stay safe.
+
+insert into public.categories (slug, label, businesslist_slug, finelib_slug, osm_shop_tag, osm_amenity_tag) values
+  ('electronics',          'Electronics',                'electrical-goods',      'electronics',          'electronics',    null),
+  ('mobile-phones',        'Mobile Phones & Accessories', 'mobile-phone-shops',    'telephones',            'mobile_phone',   null),
+  ('computer-sales',       'Computers & IT',              'computer-services',     'computer-sales',        'computer',       null),
+  ('computer-repair',      'Computer Repair',             'computer-repair',       null,                    null,             null),
+  ('pharmacy',             'Pharmacy',                    'pharmacies',            'online-pharmacy',       'pharmacy',       'pharmacy'),
+  ('medical-equipment',    'Medical Equipment',           'medical-equipment',     null,                    'medical_supply', null),
+  ('supermarket',          'Supermarket',                 'supermarket',           'supermarkets',          'supermarket',    null),
+  ('groceries',            'Grocery Store',                'food-retailers',        'groceries',             'convenience',    null),
+  ('fashion',              'Fashion',                      'fashion',               'clothing',              'clothes',        null),
+  ('clothing',             'Clothing & Accessories',       'clothing-and-accessories', 'clothing',           'clothes',        null),
+  ('footwear',             'Footwear',                     null,                    'footwear',              'shoes',          null),
+  ('textile',              'Fabric & Textile',             'textile',               null,                    'fabric',         null),
+  ('leather',              'Leather Goods',                null,                    'leather-store',         null,             null),
+  ('jewellery',            'Jewellery',                    null,                    'jewellery-shops',       'jewelry',        null),
+  ('hardware',             'Hardware Store',               'hardware-stores',       null,                    'hardware',       null),
+  ('building-materials',   'Building Materials',           'building-materials',    null,                    'doityourself',   null),
+  ('furniture',            'Furniture',                    null,                    'furniture',             'furniture',      null),
+  ('home-garden',          'Home & Garden',                null,                    'home-and-garden',       'garden_centre',  null),
+  ('kitchenware',          'Kitchenware',                  null,                    'kitchenware',           'houseware',      null),
+  ('beauty-products',      'Beauty Products',              'beauty-products',       'cosmetics',             'cosmetics',      null),
+  ('beauty-professionals', 'Beauty Salon',                 'beauty-professionals',  null,                    'hairdresser',    null),
+  ('printing',             'Printing Services',            'printing',              null,                    null,             null),
+  ('restaurant',           'Restaurant',                   'restaurants',           null,                    null,             'restaurant'),
+  ('fast-food',            'Fast Food',                    null,                    null,                    null,             'fast_food'),
+  ('cafe',                 'Cafe',                         null,                    null,                    null,             'cafe'),
+  ('books',                'Books & Stationery',           null,                    'books',                 'books',          null),
+  ('office-supplies',      'Office Supplies',              null,                    'office-supplies',       'stationery',     null),
+  ('toys',                 'Toys',                         null,                    'toys',                  'toys',           null),
+  ('kids-babies',          'Kids & Babies Shop',           null,                    'kids-and-babies-shops', 'baby_goods',     null),
+  ('gift-shop',            'Gift Shop',                    null,                    'gift-shop',             'gift',           null),
+  ('flowers',              'Flowers',                      null,                    'flowers',               'florist',        null),
+  ('musical-instrument',   'Musical Instruments',          null,                    'musical-instrument',    'musical_instrument', null),
+  ('sporting-goods',       'Fitness & Sporting Goods',     null,                    'fitness-products',      'sports',         null),
+  ('automotive',           'Automotive / Vehicle Services','vehicle-services',      'automotive',            'car_repair',     null),
+  ('department-stores',    'Department Store',             null,                    'department-stores',     'department_store', null),
+  ('wholesale',            'Wholesale Store',               null,                   'wholesale-stores',      null,             null),
+  ('secondhand',           'Secondhand / Thrift',           null,                   'secondhand-products',   'second_hand',    null),
+  ('party-supplies',       'Party Supplies',                null,                   'party-supplies',        null,             null),
+  ('wedding',              'Wedding Store',                  null,                  'wedding-stores',        null,             null),
+  ('shopping-centre',      'Shopping Centre / Mall',         'shopping-centres',    null,                    null,             null),
+  ('doctors-clinics',      'Doctors & Clinics',              'doctors-and-clinics', null,                    null,             'doctors'),
+  ('schools',              'Schools',                        'schools',             null,                    null,             'school'),
+  ('lawyers',              'Legal Services',                 'lawyers',             null,                    null,             null),
+  ('estate-agents',        'Real Estate',                    'estate-agents',       null,                    'estate_agent',   null),
+  ('employment-agencies',  'Employment Agency',              'employment-agencies', null,                    null,             null);

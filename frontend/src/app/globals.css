@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+/* ── Field Ledger design tokens ─────────────────────────────────────────
+   Cool parchment + charcoal-navy ink, one pine-green accent. First pass used
+   a warm cream + terracotta + italic-everywhere combination that read as a
+   boutique/fashion brand rather than a business-records tool — this palette
+   and upright type are the correction: cooler paper, navy ink, a green that
+   reads "ledger/registry seal" rather than "artisan good." Deliberately not
+   the default Tailwind slate/blue palette either. */
+:root {
+  --paper:        #efece2;
+  --paper-dim:    #e5e0cf;
+  --paper-line:   #cec5ab;
+
+  --ink:          #1c2128;
+  --ink-soft:     #57544b;
+  --ink-faint:    #8c8779;
+
+  --pine:       #2f5d50;
+  --pine-hover: #234a3f;
+  --pine-tint:  #dbe6de;
+
+  --brass:      #8a6d2e;
+  --brass-tint: #ece1c8;
+
+  --brick:      #9c3f32;
+  --brick-tint: #f2ddd7;
+}
+
+@theme inline {
+  --color-paper:      var(--paper);
+  --color-paper-dim:  var(--paper-dim);
+  --color-paper-line: var(--paper-line);
+
+  --color-ink:        var(--ink);
+  --color-ink-soft:   var(--ink-soft);
+  --color-ink-faint:  var(--ink-faint);
+
+  --color-pine:       var(--pine);
+  --color-pine-hover: var(--pine-hover);
+  --color-pine-tint:  var(--pine-tint);
+
+  --color-brass:      var(--brass);
+  --color-brass-tint: var(--brass-tint);
+
+  --color-brick:      var(--brick);
+  --color-brick-tint: var(--brick-tint);
+
+  --font-display: var(--font-display), "Iowan Old Style", "Palatino Linotype", serif;
+  --font-body:    var(--font-body), "Segoe UI", sans-serif;
+}
+
+body {
+  font-family: var(--font-body);
+  font-feature-settings: "tnum" 1;
+}
+
+h1, h2, h3, .font-display {
+  font-family: var(--font-display);
+}
+
+/* A faint horizontal-rule texture, evoking ruled ledger paper. Used sparingly
+   as a section background, never as decoration on every element. */
+.ruled {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 35px,
+    var(--paper-line) 35px,
+    var(--paper-line) 36px
+  );
+}
+
+::selection {
+  background: var(--pine-tint);
+  color: var(--ink);
+}
