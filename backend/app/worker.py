@@ -1,31 +1,70 @@
 """In-process background worker: polls generation_jobs for queued work and
-runs it. Started as an asyncio task from main.py's lifespan — no separate
-worker dyno for MVP (see the build plan for the cost/complexity tradeoff).
+runs it, and periodically reconciles any payments that were never confirmed.
+Started as an asyncio task from main.py's lifespan — no separate worker dyno
+for MVP (see the build plan for the cost/complexity tradeoff).
 """
 import asyncio
 import logging
 import tempfile
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 from .config import get_settings
 from .supabase_client import get_service_client
 from .scraping.engine import run_job
 from .scraping.excel import save_to_excel
+from .routers.billing import credit_if_paid
 
 logger = logging.getLogger('worker')
 
 POLL_INTERVAL_SECONDS = 5
 RESULT_BUCKET = 'generation-results'
 
+# Payment reconciliation runs far less often than job polling — it's a
+# safety net, not the primary path (that's /billing/verify, called from the
+# frontend right after Paystack redirects back), and hitting Paystack's API
+# every 5s for this would be wasteful.
+PAYMENT_RECONCILE_EVERY_N_TICKS = 12   # ~60s at a 5s poll interval
+
 
 async def poll_loop():
+    tick = 0
     while True:
         try:
             await asyncio.to_thread(_process_next_job)
         except Exception:
             logger.exception('Worker tick failed')
+
+        tick += 1
+        if tick % PAYMENT_RECONCILE_EVERY_N_TICKS == 0:
+            try:
+                await asyncio.to_thread(reconcile_pending_payments)
+            except Exception:
+                logger.exception('Payment reconciliation tick failed')
+
         await asyncio.sleep(POLL_INTERVAL_SECONDS)
+
+
+def reconcile_pending_payments():
+    """Catches the case where a user pays but never lands back on
+    /billing/return to trigger the normal verify-and-credit path (closed the
+    tab, connection dropped, etc.) — there's no webhook to fall back on here
+    (see billing.py's module docstring on the webhook for why), so this is
+    the only safety net. Only checks payments old enough that the return-page
+    call has clearly already had its chance, and gives up (marks failed, via
+    credit_if_paid) once Paystack itself reports the charge as dead rather
+    than retrying forever.
+    """
+    client = get_service_client()
+    cutoff = (datetime.now(timezone.utc) - timedelta(minutes=2)).isoformat()
+    pending = (client.table('payments').select('*')
+               .eq('status', 'pending').lt('created_at', cutoff).execute().data)
+
+    for payment in pending:
+        try:
+            credit_if_paid(client, payment)
+        except Exception:
+            logger.exception('Reconciliation failed for payment %s', payment['id'])
 
 
 def _process_next_job():

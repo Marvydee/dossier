@@ -3,7 +3,14 @@ and run_job are both patched, so this never touches the network or a real
 database. Covers the behaviour added alongside the quality filter — a job
 that completes with zero deliverable rows must refund the spent token, same
 as a hard failure, without being marked 'failed' itself (nothing errored).
+
+Also covers reconcile_pending_payments() — the safety net for a user who
+pays but never lands back on /billing/return (closed the tab, connection
+dropped). This project has no webhook fallback (its Paystack account's one
+allowed webhook URL already belongs to another project — see billing.py),
+so this periodic sweep is the only thing that catches that case.
 """
+from datetime import datetime, timezone, timedelta
 from unittest.mock import patch
 
 from app import worker
@@ -100,3 +107,96 @@ class TestProcessNextJob:
         updated = db.tables['generation_jobs'][0]
         assert updated['progress_current'] == 3
         assert updated['progress_total'] == 10
+
+
+def _old_timestamp(minutes_ago=5):
+    return (datetime.now(timezone.utc) - timedelta(minutes=minutes_ago)).isoformat()
+
+
+def _recent_timestamp(seconds_ago=10):
+    return (datetime.now(timezone.utc) - timedelta(seconds=seconds_ago)).isoformat()
+
+
+class TestReconcilePendingPayments:
+
+    def _seeded_db(self, payments):
+        db = FakeSupabaseClient()
+        db.seed('profiles', [
+            {'id': 'user-1', 'email': 'user@example.com', 'token_balance': 3,
+             'plan': 'free', 'plan_expires_at': None},
+        ])
+        db.seed('payments', payments)
+
+        def credit_purchase(params):
+            profile = next(p for p in db.tables['profiles'] if p['id'] == params['p_user_id'])
+            if params['p_plan'] == 'tokens_10':
+                profile['token_balance'] += 10
+            else:
+                profile['plan'] = 'unlimited'
+            db.tables.setdefault('token_transactions', []).append(
+                {'user_id': params['p_user_id'], 'paystack_reference': params['p_paystack_reference']})
+            return None
+
+        db.on_rpc('credit_purchase', credit_purchase)
+        return db
+
+    def test_old_pending_payment_that_actually_succeeded_gets_credited(self):
+        db = self._seeded_db([
+            {'id': 'pay-1', 'user_id': 'user-1', 'paystack_reference': 'ref-1',
+             'amount_kobo': 200_000, 'plan': 'tokens_10', 'status': 'pending',
+             'created_at': _old_timestamp()},
+        ])
+        with patch.object(worker, 'get_service_client', return_value=db), \
+             patch('app.routers.billing.verify_transaction', return_value={'status': 'success'}):
+            worker.reconcile_pending_payments()
+
+        assert db.tables['profiles'][0]['token_balance'] == 13
+        assert db.tables['payments'][0]['status'] == 'success'
+
+    def test_recent_pending_payment_is_left_alone(self):
+        """The return-page verify call gets the first chance — reconciliation
+        shouldn't race it by checking payments that are only seconds old."""
+        db = self._seeded_db([
+            {'id': 'pay-1', 'user_id': 'user-1', 'paystack_reference': 'ref-1',
+             'amount_kobo': 200_000, 'plan': 'tokens_10', 'status': 'pending',
+             'created_at': _recent_timestamp()},
+        ])
+        with patch.object(worker, 'get_service_client', return_value=db), \
+             patch('app.routers.billing.verify_transaction') as mock_verify:
+            worker.reconcile_pending_payments()
+
+        mock_verify.assert_not_called()
+        assert db.tables['profiles'][0]['token_balance'] == 3
+
+    def test_already_settled_payments_are_not_rechecked(self):
+        db = self._seeded_db([
+            {'id': 'pay-1', 'user_id': 'user-1', 'paystack_reference': 'ref-1',
+             'amount_kobo': 200_000, 'plan': 'tokens_10', 'status': 'success',
+             'created_at': _old_timestamp()},
+        ])
+        with patch.object(worker, 'get_service_client', return_value=db), \
+             patch('app.routers.billing.verify_transaction') as mock_verify:
+            worker.reconcile_pending_payments()
+
+        mock_verify.assert_not_called()
+
+    def test_one_failing_payment_does_not_block_others(self):
+        db = self._seeded_db([
+            {'id': 'pay-1', 'user_id': 'user-1', 'paystack_reference': 'ref-1',
+             'amount_kobo': 200_000, 'plan': 'tokens_10', 'status': 'pending',
+             'created_at': _old_timestamp()},
+            {'id': 'pay-2', 'user_id': 'user-1', 'paystack_reference': 'ref-2',
+             'amount_kobo': 200_000, 'plan': 'tokens_10', 'status': 'pending',
+             'created_at': _old_timestamp()},
+        ])
+
+        def flaky_verify(ref):
+            if ref == 'ref-1':
+                raise Exception('Paystack timed out')
+            return {'status': 'success'}
+
+        with patch.object(worker, 'get_service_client', return_value=db), \
+             patch('app.routers.billing.verify_transaction', side_effect=flaky_verify):
+            worker.reconcile_pending_payments()   # must not raise
+
+        assert db.tables['profiles'][0]['token_balance'] == 13   # ref-2 still got credited

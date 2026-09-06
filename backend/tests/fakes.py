@@ -46,6 +46,10 @@ class _QueryBuilder:
         self._filters.append(('in', field, list(values)))
         return self
 
+    def lt(self, field, value):
+        self._filters.append(('lt', field, value))
+        return self
+
     def order(self, *_args, **_kwargs):
         return self
 
@@ -58,6 +62,8 @@ class _QueryBuilder:
             if op == 'eq' and row.get(field) != value:
                 return False
             if op == 'in' and row.get(field) not in value:
+                return False
+            if op == 'lt' and not (row.get(field) is not None and row.get(field) < value):
                 return False
         return True
 
