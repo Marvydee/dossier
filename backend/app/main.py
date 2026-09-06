@@ -18,7 +18,7 @@ async def lifespan(app: FastAPI):
         worker_task.cancel()
 
 
-app = FastAPI(title='Docket Prospector API', lifespan=lifespan)
+app = FastAPI(title='Dossier API', lifespan=lifespan)
 
 settings = get_settings()
 app.add_middleware(
