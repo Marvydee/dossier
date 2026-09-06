@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: dossier-backend
+    runtime: python
+    rootDir: backend
+    plan: starter
+    region: frankfurt
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.3
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: PAYSTACK_PUBLIC_KEY
+        sync: false
+      - key: FRONTEND_ORIGIN
+        sync: false
+      - key: MAX_CATEGORIES_PER_JOB
+        value: "8"
+      - key: MAX_CITIES_PER_JOB
+        value: "8"
+      - key: MAX_PAGES_PER_SEARCH
+        value: "3"
+      - key: REQUEST_DELAY_SECONDS
+        value: "1.5"
+      - key: WEBSITE_TIMEOUT_SECONDS
+        value: "8"
+      - key: RESULTS_PER_JOB
+        value: "10"
